@@ -1,9 +1,9 @@
 import requests
 import xml.etree.ElementTree as ET
 from datetime import datetime
-from math import sqrt
+from math import sqrt, atan2, degrees
 import logging
-from flask import Flask, request, jsonify
+from flask import Flask, jsonify
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -59,18 +59,54 @@ def calculate_speed(x_dot: float, y_dot: float, z_dot: float) -> float:
     """
     return sqrt(x_dot**2 + y_dot**2 + z_dot**2)
 
-def analyze_iss_data(data: ET.Element):
+def analyze_iss_data(data: ET.Element) -> list:
     """
     Analyzes ISS data.
 
     Arguments:
         data: ElementTree Element containing ISS data.
+
+    Returns:
+        List of stateVector elements.
     """
     if data is None:
         logger.error("No data to analyze.")
-        return
+        return []
 
     return data.findall('.//stateVector')
+
+@app.route('/comment', methods=['GET'], endpoint='get_comment')
+def get_comment():
+    ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
+    iss_data = fetch_iss_data(ISS_DATA_URL)
+    if iss_data:
+        comment = [comment.text for comment in iss_data.findall('.//COMMENT')]
+        return jsonify({"comment": comment})
+    else:
+        return jsonify({"error": "Failed to fetch or analyze data"}), 500
+
+@app.route('/header', methods=['GET'], endpoint='get_header')
+def get_header():
+    ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
+    iss_data = fetch_iss_data(ISS_DATA_URL)
+    if iss_data:
+        header = {
+            "CREATION_DATE": iss_data.find('.//CREATION_DATE').text,
+            "ORIGINATOR": iss_data.find('.//ORIGINATOR').text
+        }
+        return jsonify({"header": header})
+    else:
+        return jsonify({"error": "Failed to fetch or analyze data"}), 500
+
+@app.route('/metadata', methods=['GET'], endpoint='get_metadata')
+def get_metadata():
+    ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
+    iss_data = fetch_iss_data(ISS_DATA_URL)
+    if iss_data:
+        metadata = {elem.tag: elem.text for elem in iss_data.find('.//metadata')}
+        return jsonify({"metadata": metadata})
+    else:
+        return jsonify({"error": "Failed to fetch or analyze data"}), 500
 
 @app.route('/epochs', methods=['GET'], endpoint='get_epochs')
 def get_epochs():
@@ -78,57 +114,33 @@ def get_epochs():
     iss_data = fetch_iss_data(ISS_DATA_URL)
     state_vectors = analyze_iss_data(iss_data)
     if state_vectors:
-        limit = request.args.get('limit', None)
-        offset = request.args.get('offset', None)
-
-        # Checking if the limit and offset are provided and convert them to integers
-        if limit is not None:
-            try:
-                limit = int(limit)
-            except ValueError:
-                return jsonify({"error": "Limit must be an integer"}), 400
-
-        if offset is not None:
-            try:
-                offset = int(offset)
-            except ValueError:
-                return jsonify({"error": "Offset must be an integer"}), 400
-
-        # Applying offset and limit to state vectors
-        if offset is not None:
-            state_vectors = state_vectors[offset:]
-        if limit is not None:
-            state_vectors = state_vectors[:limit]
-
-        # Extracting epochs from filtered state vectors
-        filtered_epochs = [sv.find('EPOCH').text for sv in state_vectors]
-
-        return jsonify(filtered_epochs)
+        return jsonify({"epochs": [sv.find('EPOCH').text for sv in state_vectors]})
     else:
         return jsonify({"error": "Failed to fetch or analyze data"}), 500
 
 @app.route('/epochs/<epoch>', methods=['GET'], endpoint='get_state_vectors')
-def get_state_vectors(epoch):
+def get_state_vectors(epoch: str):
     ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
     iss_data = fetch_iss_data(ISS_DATA_URL)
     state_vectors = analyze_iss_data(iss_data)
     if state_vectors:
         for sv in state_vectors:
             if sv.find('EPOCH').text == epoch:
-                return jsonify({
+                state_vector = {
                     "X": float(sv.find('X').text),
                     "Y": float(sv.find('Y').text),
                     "Z": float(sv.find('Z').text),
                     "X_DOT": float(sv.find('X_DOT').text),
                     "Y_DOT": float(sv.find('Y_DOT').text),
                     "Z_DOT": float(sv.find('Z_DOT').text)
-                })
+                }
+                return jsonify({"state_vector": state_vector})
         return jsonify({"error": "Epoch not found"}), 404
     else:
         return jsonify({"error": "Failed to fetch or analyze data"}), 500
 
 @app.route('/epochs/<epoch>/speed', methods=['GET'], endpoint='get_instantaneous_speed')
-def get_instantaneous_speed(epoch):
+def get_instantaneous_speed(epoch: str):
     ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
     iss_data = fetch_iss_data(ISS_DATA_URL)
     state_vectors = analyze_iss_data(iss_data)
@@ -145,25 +157,68 @@ def get_instantaneous_speed(epoch):
     else:
         return jsonify({"error": "Failed to fetch or analyze data"}), 500
 
-@app.route('/now', methods=['GET'], endpoint='get_nearest_epoch')
-def get_nearest_epoch():
+@app.route('/epochs/<epoch>/location', methods=['GET'], endpoint='get_location')
+def get_location(epoch: str):
     ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
     iss_data = fetch_iss_data(ISS_DATA_URL)
     state_vectors = analyze_iss_data(iss_data)
     if state_vectors:
-        now = datetime.now()
-        closest_epoch = min(state_vectors, key=lambda x: abs(now - parse_timestamp(x.find('EPOCH').text)))
-        speed = calculate_speed(
-            float(closest_epoch.find('X_DOT').text),
-            float(closest_epoch.find('Y_DOT').text),
-            float(closest_epoch.find('Z_DOT').text)
-        )
-        return jsonify({
-            "epoch": closest_epoch.find('EPOCH').text,
-            "speed": speed
-        })
+        for sv in state_vectors:
+            if sv.find('EPOCH').text == epoch:
+                x = float(sv.find('X').text)
+                y = float(sv.find('Y').text)
+                z = float(sv.find('Z').text)
+                
+                # Geoposition calculation
+                lat = degrees(atan2(z, sqrt(x**2 + y**2)))
+                lon = degrees(atan2(y, x)) - ((hrs-12)+(mins/60))*(360/24) + 19
+                # Longitude correction
+                if lon > 180:
+                    lon -= 360
+                elif lon < -180:
+                    lon += 360
+
+                location = {
+                    "latitude": lat,
+                    "longitude": lon,
+                    "altitude": z,
+                }
+                return jsonify({"location": location})
+        return jsonify({"error": "Epoch not found"}), 404
     else:
         return jsonify({"error": "Failed to fetch or analyze data"}), 500
 
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route('/now', methods=['GET'], endpoint='get_current_location')
+def get_current_location():
+    ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
+    iss_data = fetch_iss_data(ISS_DATA_URL)
+    state_vectors = analyze_iss_data(iss_data)
+    if state_vectors:
+        # Find the state vector closest to the current time
+        current_time = datetime.utcnow()
+        closest_sv = min(state_vectors, key=lambda sv: abs(parse_timestamp(sv.find('EPOCH').text) - current_time))
+
+        x = float(closest_sv.find('X').text)
+        y = float(closest_sv.find('Y').text)
+        z = float(closest_sv.find('Z').text)
+                
+        # Geoposition calculation
+        lat = degrees(atan2(z, sqrt(x**2 + y**2)))
+        lon = degrees(atan2(y, x)) - ((hrs-12)+(mins/60))*(360/24) + 19
+        # Longitude correction
+        if lon > 180:
+            lon -= 360
+        elif lon < -180:
+            lon += 360
+
+        current_location = {
+            "latitude": lat,
+            "longitude": lon,
+            "altitude": z,
+        }
+        return jsonify({"current_location": current_location})
+    else:
+        return jsonify({"error": "Failed to fetch or analyze data"}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0')
