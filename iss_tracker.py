@@ -189,34 +189,22 @@ def get_location(epoch: str):
         return jsonify({"error": "Failed to fetch or analyze data"}), 500
 
 @app.route('/now', methods=['GET'], endpoint='get_current_location')
-def get_current_location():
+def get_nearest_epoch():
     ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
     iss_data = fetch_iss_data(ISS_DATA_URL)
     state_vectors = analyze_iss_data(iss_data)
     if state_vectors:
-        # Find the state vector closest to the current time
-        current_time = datetime.utcnow()
-        closest_sv = min(state_vectors, key=lambda sv: abs(parse_timestamp(sv.find('EPOCH').text) - current_time))
-
-        x = float(closest_sv.find('X').text)
-        y = float(closest_sv.find('Y').text)
-        z = float(closest_sv.find('Z').text)
-                
-        # Geoposition calculation
-        lat = degrees(atan2(z, sqrt(x**2 + y**2)))
-        lon = degrees(atan2(y, x)) - ((hrs-12)+(mins/60))*(360/24) + 19
-        # Longitude correction
-        if lon > 180:
-            lon -= 360
-        elif lon < -180:
-            lon += 360
-
-        current_location = {
-            "latitude": lat,
-            "longitude": lon,
-            "altitude": z,
-        }
-        return jsonify({"current_location": current_location})
+        now = datetime.now()
+        closest_epoch = min(state_vectors, key=lambda x: abs(now - parse_timestamp(x.find('EPOCH').text)))
+        speed = calculate_speed(
+            float(closest_epoch.find('X_DOT').text),
+            float(closest_epoch.find('Y_DOT').text),
+            float(closest_epoch.find('Z_DOT').text)
+        )
+        return jsonify({
+            "epoch": closest_epoch.find('EPOCH').text,
+            "speed": speed
+        })
     else:
         return jsonify({"error": "Failed to fetch or analyze data"}), 500
 
