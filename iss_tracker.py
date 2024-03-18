@@ -171,6 +171,12 @@ def get_location(epoch: str):
                 
                 # Geoposition calculation
                 lat = degrees(atan2(z, sqrt(x**2 + y**2)))
+                
+                # Extract hours and minutes from the timestamp
+                timestamp = parse_timestamp(sv.find('EPOCH').text)
+                hrs = timestamp.hour
+                mins = timestamp.minute
+                
                 lon = degrees(atan2(y, x)) - ((hrs-12)+(mins/60))*(360/24) + 19
                 # Longitude correction
                 if lon > 180:
@@ -187,7 +193,7 @@ def get_location(epoch: str):
         return jsonify({"error": "Epoch not found"}), 404
     else:
         return jsonify({"error": "Failed to fetch or analyze data"}), 500
-
+        
 @app.route('/now', methods=['GET'], endpoint='get_current_location')
 def get_nearest_epoch():
     ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
