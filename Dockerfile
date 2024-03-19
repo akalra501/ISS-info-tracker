@@ -15,11 +15,11 @@ WORKDIR /code
 COPY requirements.txt /code/requirements.txt
 RUN pip install -r /code/requirements.txt
 COPY iss_tracker.py .
-COPY test_iss_tracker.py .
+COPY /test/test_iss_tracker.py .
 
 # Give execute permissions to the Python scripts
 RUN chmod +x iss_tracker.py
-RUN chmod +x test_iss_tracker.py
+RUN chmod +x /test/test_iss_tracker.py
 
 # Set the environment variable PATH to include the /code directory
 ENV PATH="/code:${PATH}"
