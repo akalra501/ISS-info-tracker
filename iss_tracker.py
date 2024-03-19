@@ -5,6 +5,7 @@ from math import sqrt, atan2, degrees
 import logging
 from flask import Flask, jsonify
 from astropy import units as u
+from astropy import coordinates
 from astropy.coordinates import CartesianRepresentation, GCRS, ITRS, EarthLocation
 from geopy.geocoders import Nominatim
 
