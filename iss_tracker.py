@@ -4,6 +4,9 @@ from datetime import datetime
 from math import sqrt, atan2, degrees
 import logging
 from flask import Flask, jsonify
+from astropy import units as u
+from astropy.coordinates import CartesianRepresentation, GCRS, ITRS, EarthLocation
+from geopy.geocoders import Nominatim
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -157,13 +160,12 @@ def get_instantaneous_speed(epoch: str):
     else:
         return jsonify({"error": "Failed to fetch or analyze data"}), 500
 
-@app.route('/epochs/<epoch>/location', methods=['GET'], endpoint='get_location')
+@app.route('/epochs/<epoch>/location', methods=['GET'])
 def get_location(epoch: str):
     ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
     iss_data = fetch_iss_data(ISS_DATA_URL)
-    state_vectors = analyze_iss_data(iss_data)
-    if state_vectors:
-        for sv in state_vectors:
+    if iss_data:
+        for sv in iss_data.findall('.//stateVector'):
             if sv.find('EPOCH').text == epoch:
                 x = float(sv.find('X').text)
                 y = float(sv.find('Y').text)
@@ -184,10 +186,18 @@ def get_location(epoch: str):
                 elif lon < -180:
                     lon += 360
 
+                # Altitude can be negative
+                altitude = float(sv.find('Z').text)
+
+                # Reverse geocoding
+                geocoder = Nominatim(user_agent='iss_tracker')
+                geoloc = geocoder.reverse((lat, lon), zoom=15, language='en')
+
                 location = {
                     "latitude": lat,
                     "longitude": lon,
-                    "altitude": z,
+                    "altitude": altitude,
+                    "geolocation": str(geoloc)
                 }
                 return jsonify({"location": location})
         return jsonify({"error": "Epoch not found"}), 404
