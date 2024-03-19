@@ -206,6 +206,9 @@ def get_location(epoch: str):
         
 @app.route('/now', methods=['GET'], endpoint='get_current_location')
 def get_current_location():
+    """
+    Calculates the closest epoch to the current time and the instantaneous speed at that epoch.
+    """
     ISS_DATA_URL = "https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml"
     iss_data = fetch_iss_data(ISS_DATA_URL)
     state_vectors = analyze_iss_data(iss_data)
@@ -217,26 +220,25 @@ def get_current_location():
         x = float(closest_sv.find('X').text)
         y = float(closest_sv.find('Y').text)
         z = float(closest_sv.find('Z').text)
-                
+
         # Geoposition calculation
-        lat = degrees(atan2(z, sqrt(x**2 + y**2)))
-        
-        # Extract hours and minutes from the timestamp
-        timestamp = parse_timestamp(closest_sv.find('EPOCH').text)
-        hrs = timestamp.hour
-        mins = timestamp.minute
-        
-        lon = degrees(atan2(y, x)) - ((hrs-12)+(mins/60))*(360/24) + 19
-        # Longitude correction
-        if lon > 180:
-            lon -= 360
-        elif lon < -180:
-            lon += 360
+        this_epoch = parse_timestamp(closest_sv.find('EPOCH').text)
+        cartrep = coordinates.CartesianRepresentation([x, y, z], unit=units.km)
+        gcrs = coordinates.GCRS(cartrep, obstime=this_epoch)
+        itrs = gcrs.transform_to(coordinates.ITRS(obstime=this_epoch))
+        loc = coordinates.EarthLocation(*itrs.cartesian.xyz)
+        lat = loc.lat.value
+        long = loc.lon.value
+        alt = loc.height.value
+
+        geocoder = Nominatim(user_agent='iss_tracker')
+        geoloc = geocoder.reverse((lat, long), zoom=15, language='en')
 
         current_location = {
-            "latitude": lat,
-            "longitude": lon,
-            "altitude": z,
+            'current latitude': lat,
+            'current longitude': long,
+            'current altitude': alt,
+            'geolocation': str(geoloc)
         }
         return jsonify({"current_location": current_location})
     else:
