@@ -4,7 +4,7 @@ FROM python:3.9
 # Update package lists, upgrade existing packages, and install necessary packages
 RUN apt-get update && \
     apt-get upgrade -y && \
-    apt-get install -y python3 python3-pip reqeusts_mock
+    apt-get install -y python3 python3-pip requests reqeusts-mock
 
 RUN pip3 install pytest==8.0.0 \
                  xmltodict==0.13.0 \
