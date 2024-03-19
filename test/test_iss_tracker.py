@@ -4,6 +4,7 @@ from datetime import datetime
 from math import isclose
 import pytest
 from unittest.mock import patch
+import requests_mock
 from iss_tracker import app, fetch_iss_data, parse_timestamp, calculate_speed, analyze_iss_data
 
 
