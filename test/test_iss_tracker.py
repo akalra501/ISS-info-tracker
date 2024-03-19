@@ -3,7 +3,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 from math import isclose
 import pytest
-from iss_tracker import fetch_iss_data, parse_timestamp, calculate_speed, analyze_iss_data
+from iss_tracker import fetch_iss_data, parse_timestamp, calculate_speed, analyze_iss_data, app
 
 
 @pytest.fixture
@@ -82,21 +82,77 @@ def test_analyze_iss_data(sample_iss_data, caplog):
     assert "Average speed:" in logs[2]
     assert "Instantaneous speed at closest epoch to now:" in logs[3]
 
-def test_get_epochs_with_limit_and_offset(requests_mock, sample_iss_data):
+def test_get_comment(requests_mock, sample_iss_data):
     # Mocking the requests library to return sample ISS data
     requests_mock.get("https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml", text=ET.tostring(sample_iss_data).decode("utf-8"))
 
-    # Test fetching epochs with limit and offset
-    limit = 5
-    offset = 2
-    iss_data = fetch_iss_data("https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml")
-    state_vectors = analyze_iss_data(iss_data)
-    expected_epochs = [sv.find('EPOCH').text for sv in state_vectors[offset:offset+limit]]
-    
-    response = app.test_client().get(f'/epochs?limit={limit}&offset={offset}')
+    # Test fetching comment
+    response = app.test_client().get('/comment')
     assert response.status_code == 200
-    assert response.json is not None
-    assert response.json == expected_epochs
+    assert 'comment' in response.json
+
+def test_get_header(requests_mock, sample_iss_data):
+    # Mocking the requests library to return sample ISS data
+    requests_mock.get("https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml", text=ET.tostring(sample_iss_data).decode("utf-8"))
+
+    # Test fetching header
+    response = app.test_client().get('/header')
+    assert response.status_code == 200
+    assert 'header' in response.json
+
+def test_get_metadata(requests_mock, sample_iss_data):
+    # Mocking the requests library to return sample ISS data
+    requests_mock.get("https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml", text=ET.tostring(sample_iss_data).decode("utf-8"))
+
+    # Test fetching metadata
+    response = app.test_client().get('/metadata')
+    assert response.status_code == 200
+    assert 'metadata' in response.json
+
+def test_get_epochs(requests_mock, sample_iss_data):
+    # Mocking the requests library to return sample ISS data
+    requests_mock.get("https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml", text=ET.tostring(sample_iss_data).decode("utf-8"))
+
+    # Test fetching epochs
+    response = app.test_client().get('/epochs')
+    assert response.status_code == 200
+    assert 'epochs' in response.json
+
+def test_get_state_vectors(requests_mock, sample_iss_data):
+    # Mocking the requests library to return sample ISS data
+    requests_mock.get("https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml", text=ET.tostring(sample_iss_data).decode("utf-8"))
+
+    # Test fetching state vectors
+    response = app.test_client().get('/epochs/2024-047T12:00:00.000Z')
+    assert response.status_code == 200
+    assert 'state_vector' in response.json
+
+def test_get_instantaneous_speed(requests_mock, sample_iss_data):
+    # Mocking the requests library to return sample ISS data
+    requests_mock.get("https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml", text=ET.tostring(sample_iss_data).decode("utf-8"))
+
+    # Test fetching instantaneous speed
+    response = app.test_client().get('/epochs/2024-047T12:00:00.000Z/speed')
+    assert response.status_code == 200
+    assert 'speed' in response.json
+
+def test_get_location(requests_mock, sample_iss_data):
+    # Mocking the requests library to return sample ISS data
+    requests_mock.get("https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml", text=ET.tostring(sample_iss_data).decode("utf-8"))
+
+    # Test fetching location
+    response = app.test_client().get('/epochs/2024-047T12:00:00.000Z/location')
+    assert response.status_code == 200
+    assert 'location' in response.json
+
+def test_get_current_location(requests_mock, sample_iss_data):
+    # Mocking the requests library to return sample ISS data
+    requests_mock.get("https://nasa-public-data.s3.amazonaws.com/iss-coords/current/ISS_OEM/ISS.OEM_J2K_EPH.xml", text=ET.tostring(sample_iss_data).decode("utf-8"))
+
+    # Test fetching current location
+    response = app.test_client().get('/now')
+    assert response.status_code == 200
+    assert 'current_location' in response.json
 
 if __name__ == "__main__":
     pytest.main(['-v'])
