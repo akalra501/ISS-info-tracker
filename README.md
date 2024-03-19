@@ -30,8 +30,7 @@ what you are working with.
 1. There is a docker-compose.yml file in this repo that will help you launch the application. The file has all the necessary information.
 2. In order to run the application, use the following command `docker-compose up -d` this will start the flask app.
 3. Now that the flask app is running, you can run the curl commands in the command line in order to get the output. The curl commands are explained in detail below.
-4. In order to run the unit tests, run the following command: `docker exec -it iss_tracker /bin/bash`. This will take you inside the container where you can simply type in `pytest` in order to run the unit tests. If all the steps are performed correctly you should get 12 passed tests.
-
+  
 ## Curl Commands to see output.
 1. In order to see the list of all epochs you can run the following command. `curl localhost:5000/epochs`. This will print the list of all epochs to the screen
 2. In order to see the list of epochs given query parameters you can run the following command. ` curl localhost:5000/epochs?limit=int&offset=int` in this command replace the 'int' with your desired numbers. The output for this command will be the list of epochs based on your query parameters.
@@ -94,5 +93,8 @@ what you are working with.
     "TIME_SYSTEM": "UTC"
   }
 }`
-   
+
+## Running the containerized unit tests
+1. In order to run the unit tests, run the following command: `docker exec -it iss_tracker /bin/bash`. This will take you inside the container where you can simply type in `pytest` in order to run the unit tests. If all the steps are performed correctly you should get 12 passed tests.
+
 
