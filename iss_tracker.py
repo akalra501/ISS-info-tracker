@@ -221,7 +221,7 @@ def get_current_location():
         x = float(closest_sv.find('X').text)
         y = float(closest_sv.find('Y').text)
         z = float(closest_sv.find('Z').text)
-
+        speed = calculate_speed(x,y,z)
         # Geoposition calculation
         this_epoch = parse_timestamp(closest_sv.find('EPOCH').text)
         cartrep = coordinates.CartesianRepresentation([x, y, z], unit=units.km)
@@ -239,7 +239,8 @@ def get_current_location():
             'current latitude': lat,
             'current longitude': long,
             'current altitude': alt,
-            'geolocation': str(geoloc)
+            'geolocation': str(geoloc),
+            'instantaneous speed': speed
         }
         return jsonify({"current_location": current_location})
     else:
