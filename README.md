@@ -1,4 +1,4 @@
-# COE 332 Homework04: The ISS Aquatic data analysis.
+# International Space Station Tracker: Midterm
 
 ## Overview
 This folder contains 2 main scripts, `iss_tracker.py` and `test_iss_tracker.py`. The primary script `iss_tracker.py` fetches real-time International Space Station (ISS)
@@ -14,28 +14,25 @@ what you are working with.
 
 ## Cloning the repostiory.
 1. In order to clone this repository, open the command promp, and navigate to the directory to which you want to clone to.
-2. Next, run the following command: `git clone git@github.com:akalra501/coe332-Homeworks.git`
-3. Once you have cloned the repo, make sure that you `cd` into the homework04 directory by doing `cd homework04`.
+2. Next, run the following command: `git@github.com:akalra501/ISS-info-tracker.git`
+3. Once you have cloned the repo, make sure that you `cd` into the main directory directory by doing `cd ISS-info-tracker`.
 4. Make sure the necessary scripts exist by typing in the `ls` command.
 
 ## Building a container
 1. To build a container from the Dockerfile use the follwing command, and replace `<user_name>` with your docker username.:
-   `docker build -t <user_name>/flask-homework05:1.0 .`
+   `docker build -t <user_name>/iss_tracker:1.0 .`
 2. The above command has built the image.
 3. To see the image run the following command:
     `docker images -a`
 4. You will notice an image has been built.
 
-## Running the containerized code
-1. Since the image has been built you can use the following command to create a docker container from the image:
-  ` docker run --rm -it <user_name>/flask-homework05:1.0 `, again replacing the username with your docker username.
-2. This will show that your app has started running on a server.
-3. The next step is to copy the http path shown on the screen.
-4. Once, the path has been copied, navigate to a new terminal window.
-5. Navigate to the jetstream VM in the new window.
-6. Now you can begin executing the curl commands.
+## Running the docker-compose.yml file.
+1. There is a docker-compose.yml file in this repo that will help you launch the application. The file has all the necessary information.
+2. In order to run the application, use the following command `docker-compose up -d` this will start the flask app.
+3. Now that the flask app is running, you can run the curl commands in the command line in order to get the output. The curl commands are explained in detail below.
+4. In order to run the unit tests, run the following command: `docker exec -it iss_tracker /bin/bash`. This will take you inside the container where you can simply type in `pytest` in order to run the unit tests. If all the steps are performed correctly you should get 12 passed tests.
 
-##Curl Commands to see output.
+## Curl Commands to see output.
 1. In order to see the list of all epochs you can run the following command. `curl localhost:5000/epochs`. This will print the list of all epochs to the screen
 2. In order to see the list of epochs given query parameters you can run the following command. ` curl localhost:5000/epochs?limit=int&offset=int` in this command replace the 'int' with your desired numbers. The output for this command will be the list of epochs based on your query parameters.
 3. In order to see the state vectors for a specific epoch, you can run the following command. `curl localhost:5000/epochs/<epoch>` instead of <epoch> you will have to write the value of an actual epoch. A sample epoch you can try is: 2024-059T12:28:00.000Z. so the modified command would be `curl localhost:5000/epochs/2024-059T12:28:00.000Z`. This will output the state vectors of this particular specified epoch.
