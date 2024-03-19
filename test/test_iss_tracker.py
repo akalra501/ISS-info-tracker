@@ -81,27 +81,6 @@ def test_get_epochs_with_limit_and_offset(analyze_mock, sample_iss_data):
     assert response.status_code == 200
     assert response.json is not None
 
-@patch('geopy.geocoders.Nominatim.reverse')
-def test_get_location(reverse_mock, sample_iss_data):
-    # Mocking the reverse geocoding response
-    reverse_mock.return_value = "Mocked Location"
-
-    # Test fetching location
-    with patch('iss_tracker.fetch_iss_data', return_value=sample_iss_data):
-        response = app.test_client().get('/epochs/2024-047T12:00:00.000Z/location')
-        assert response.status_code == 200
-        assert 'location' in response.json
-
-@patch('geopy.geocoders.Nominatim.reverse')
-def test_get_current_location(reverse_mock, sample_iss_data):
-    # Mocking the reverse geocoding response
-    reverse_mock.return_value = "Mocked Current Location"
-
-    # Test fetching current location
-    with patch('iss_tracker.fetch_iss_data', return_value=sample_iss_data):
-        response = app.test_client().get('/now')
-        assert response.status_code == 200
-        assert 'current_location' in response.json
 
 @patch('iss_tracker.analyze_iss_data')
 def test_get_comment(analyze_mock, sample_iss_data):
@@ -162,6 +141,23 @@ def test_get_instantaneous_speed(analyze_mock, sample_iss_data):
     response = app.test_client().get('/epochs/2024-047T12:00:00.000Z/speed')
     assert response.status_code == 200
     assert 'speed' in response.json
+
+@patch('geopy.geocoders.Nominatim.reverse')
+def test_get_location(reverse_mock, sample_iss_data):
+    # Test fetching location
+    with patch('iss_tracker.fetch_iss_data', return_value=sample_iss_data):
+        response = app.test_client().get('/epochs/2024-047T12:00:00.000Z/location')
+        assert response.status_code == 200
+        assert 'location' in response.json
+
+@patch('geopy.geocoders.Nominatim.reverse')
+def test_get_current_location(reverse_mock, sample_iss_data):
+    # Test fetching current location
+    with patch('iss_tracker.fetch_iss_data', return_value=sample_iss_data):
+        response = app.test_client().get('/now')
+        assert response.status_code == 200
+        assert 'current_location' in response.json
+
 
 if __name__ == "__main__":
     pytest.main(['-v'])
